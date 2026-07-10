@@ -1,11 +1,14 @@
 package main
 
 import (
+	"SiteMonitor/Internal/Database"
 	_ "context"
+	"fmt"
 	"log/slog"
 	_ "net/http"
 
 	"SiteMonitor/Internal/Config"
+	_ "SiteMonitor/Internal/Database"
 
 	"github.com/joho/godotenv"
 )
@@ -18,7 +21,9 @@ func main() {
 	}
 
 	var config Config.Config = Config.Load(env)
+	slog.Info("Current environment: " + config.AppEnv)
 
-	slog.Info(config.AppEnv)
+	dbConnection := Database.ConnectDatabase(config)
 
+	fmt.Println(&dbConnection)
 }
