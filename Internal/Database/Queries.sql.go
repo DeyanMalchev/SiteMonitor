@@ -12,13 +12,14 @@ import (
 )
 
 const createTarget = `-- name: CreateTarget :one
-INSERT INTO targets (url, environment, interval_seconds, timeout_seconds)
-VALUES ($1, $2, $3, $4)
-RETURNING id, url, environment, interval_seconds, timeout_seconds, is_active, created_at, updated_at
+INSERT INTO targets (url, name, environment, interval_seconds, timeout_seconds)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, url, name, environment, interval_seconds, timeout_seconds, is_active, created_at, updated_at
 `
 
 type CreateTargetParams struct {
 	Url             string
+	Name            string
 	Environment     string
 	IntervalSeconds int32
 	TimeoutSeconds  int32
@@ -27,6 +28,7 @@ type CreateTargetParams struct {
 func (q *Queries) CreateTarget(ctx context.Context, arg CreateTargetParams) (Target, error) {
 	row := q.db.QueryRow(ctx, createTarget,
 		arg.Url,
+		arg.Name,
 		arg.Environment,
 		arg.IntervalSeconds,
 		arg.TimeoutSeconds,
@@ -35,6 +37,7 @@ func (q *Queries) CreateTarget(ctx context.Context, arg CreateTargetParams) (Tar
 	err := row.Scan(
 		&i.ID,
 		&i.Url,
+		&i.Name,
 		&i.Environment,
 		&i.IntervalSeconds,
 		&i.TimeoutSeconds,
@@ -45,36 +48,48 @@ func (q *Queries) CreateTarget(ctx context.Context, arg CreateTargetParams) (Tar
 	return i, err
 }
 
-const getTargetStats = `-- name: GetTargetStats :many
-SELECT status_code, is_healthy, latency_ms, checked_at
-FROM uptime_logs
-WHERE target_id = $1
-ORDER BY checked_at DESC
-LIMIT $2
+const getTargetStatsByURLorName = `-- name: GetTargetStatsByURLorName :many
+SELECT
+    t.name as target_name,
+    t.url as target_url,
+    l.status_code,
+    l.is_healthy,
+    l.latency_ms,
+    l.checked_at
+FROM uptime_logs l
+         INNER JOIN targets t ON l.target_id = t.id
+WHERE t.name ILIKE $1 OR t.url ILIKE $2
+ORDER BY l.checked_at DESC
+LIMIT $3
 `
 
-type GetTargetStatsParams struct {
-	TargetID pgtype.UUID
-	Limit    int32
+type GetTargetStatsByURLorNameParams struct {
+	Name  pgtype.Text
+	Url   string
+	Limit int32
 }
 
-type GetTargetStatsRow struct {
+type GetTargetStatsByURLorNameRow struct {
+	TargetName pgtype.Text
+	TargetUrl  string
 	StatusCode pgtype.Int4
 	IsHealthy  bool
 	LatencyMs  int32
 	CheckedAt  pgtype.Timestamptz
 }
 
-func (q *Queries) GetTargetStats(ctx context.Context, arg GetTargetStatsParams) ([]GetTargetStatsRow, error) {
-	rows, err := q.db.Query(ctx, getTargetStats, arg.TargetID, arg.Limit)
+func (q *Queries) GetTargetStatsByURLorName(ctx context.Context, arg GetTargetStatsByURLorNameParams) ([]GetTargetStatsByURLorNameRow, error) {
+	rows, err := q.db.Query(ctx, getTargetStatsByURLorName, arg.Name, arg.Url, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetTargetStatsRow
+	var items []GetTargetStatsByURLorNameRow
 	for rows.Next() {
-		var i GetTargetStatsRow
+		var i GetTargetStatsByURLorNameRow
 		if err := rows.Scan(
+			&i.TargetName,
+			&i.TargetUrl,
 			&i.StatusCode,
 			&i.IsHealthy,
 			&i.LatencyMs,
@@ -126,7 +141,7 @@ func (q *Queries) InsertUptimeLog(ctx context.Context, arg InsertUptimeLogParams
 }
 
 const listActiveTargets = `-- name: ListActiveTargets :many
-SELECT id, url, environment, interval_seconds, timeout_seconds, is_active, created_at, updated_at FROM targets
+SELECT id, url, name, environment, interval_seconds, timeout_seconds, is_active, created_at, updated_at FROM targets
 WHERE is_active = TRUE
 `
 
@@ -142,6 +157,7 @@ func (q *Queries) ListActiveTargets(ctx context.Context) ([]Target, error) {
 		if err := rows.Scan(
 			&i.ID,
 			&i.Url,
+			&i.Name,
 			&i.Environment,
 			&i.IntervalSeconds,
 			&i.TimeoutSeconds,

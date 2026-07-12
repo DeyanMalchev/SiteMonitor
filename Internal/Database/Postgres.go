@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -32,15 +31,16 @@ func ConnectDatabase(config Config.Config) *pgxpool.Pool {
 	return pool
 }
 
-func InsertTarget(ctx context.Context, conn *pgx.Conn, target CreateTargetParams) error {
+func InsertTarget(ctx context.Context, pool *pgxpool.Pool, target CreateTargetParams) error {
 
-	queries := New(conn)
+	queries := New(pool)
 	if queries == nil {
-		slog.Warn("No target queries available")
+		slog.Error("No target queries available.", "error", target)
 	}
 
 	_, err := queries.CreateTarget(ctx, target)
 	if err != nil {
+		slog.Error("Create target failed", "error", err)
 		return err
 	}
 
@@ -48,18 +48,14 @@ func InsertTarget(ctx context.Context, conn *pgx.Conn, target CreateTargetParams
 	return nil
 }
 
-func ListTargetStats(ctx context.Context, conn *pgx.Conn, target GetTargetStatsParams) []GetTargetStatsRow {
+func GetActiveTargets(ctx context.Context, pool *pgxpool.Pool) []Target {
 
-	queries := New(conn)
+	queries := New(pool)
 	if queries == nil {
-		slog.Warn("No target queries available")
+		slog.Error("No active target queries available.", "error", nil)
 	}
 
-	stats, err := queries.GetTargetStats(ctx, target)
-	if err != nil {
-		slog.Error("Error getting target stats: ", err)
-	}
-	slog.Info("Get target stats", target)
+	activeTargets, _ := queries.ListActiveTargets(ctx)
 
-	return stats
+	return activeTargets
 }

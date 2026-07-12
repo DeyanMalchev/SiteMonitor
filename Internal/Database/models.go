@@ -11,6 +11,7 @@ import (
 type Target struct {
 	ID              pgtype.UUID
 	Url             string
+	Name            pgtype.Text
 	Environment     string
 	IntervalSeconds int32
 	TimeoutSeconds  int32
