@@ -2,10 +2,10 @@ package Config
 
 import (
 	"log/slog"
-	_ "log/slog"
 	"os"
-	_ "os"
 	_ "strconv"
+
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -18,8 +18,14 @@ type Config struct {
 	DBPort string
 }
 
-func Load(env error) Config {
+func Load() Config {
 	slog.Info("Loading Config...")
+
+	// Rename to 'err' because godotenv returns an error type, not an environment object
+	err := godotenv.Load()
+	if err != nil { // Check if an error ACTUALLY exists
+		slog.Warn("No .env file found, reading from system environment", "error", err)
+	}
 
 	var conf Config = Config{
 		AppEnv: os.Getenv("APP_ENV"),

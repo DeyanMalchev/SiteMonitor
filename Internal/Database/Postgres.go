@@ -5,27 +5,61 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func ConnectDatabase(config Config.Config) *pgx.Conn {
+func ConnectDatabase(config Config.Config) *pgxpool.Pool {
 
-	conn, err := pgx.Connect(context.Background(), fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", config.DBUser, config.DBPass, config.DBHost, config.DBPort, config.DBName))
+	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
+		config.DBUser, config.DBPass, config.DBHost, config.DBPort, config.DBName)
+
+	pool, err := pgxpool.New(context.Background(), connStr)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
-		os.Exit(1)
+		slog.Error("Database connection error", err)
+		pool.Close()
+		return nil
 	}
-	defer func(conn *pgx.Conn, ctx context.Context) {
-		connClose := conn.Close(ctx)
-		if connClose != nil {
-			slog.Warn("Could not close database connection: %v", connClose)
-			os.Exit(1)
-		}
-	}(conn, context.Background())
 
-	slog.Info("Connected to database.", conn.PgConn())
+	if err := pool.Ping(context.Background()); err != nil {
+		slog.Error("Database ping failed", "error", err)
+		return nil
+	}
 
-	return conn
+	slog.Info("Connected to database pool.")
+
+	return pool
+}
+
+func InsertTarget(ctx context.Context, conn *pgx.Conn, target CreateTargetParams) error {
+
+	queries := New(conn)
+	if queries == nil {
+		slog.Warn("No target queries available")
+	}
+
+	_, err := queries.CreateTarget(ctx, target)
+	if err != nil {
+		return err
+	}
+
+	slog.Info("Created target.", target)
+	return nil
+}
+
+func ListTargetStats(ctx context.Context, conn *pgx.Conn, target GetTargetStatsParams) []GetTargetStatsRow {
+
+	queries := New(conn)
+	if queries == nil {
+		slog.Warn("No target queries available")
+	}
+
+	stats, err := queries.GetTargetStats(ctx, target)
+	if err != nil {
+		slog.Error("Error getting target stats: ", err)
+	}
+	slog.Info("Get target stats", target)
+
+	return stats
 }
