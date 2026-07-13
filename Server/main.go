@@ -41,6 +41,16 @@ func main() {
 	for index, activeTarget := range activeTargets {
 		fmt.Println(index, ". ", activeTarget)
 	}
+
+	var target Database.GetTargetStatsByURLorNameParams = Database.GetTargetStatsByURLorNameParams{
+		Name:  ("YouTube"),
+		Url:   ("https://www.youtube.com/"),
+		Limit: int32(0),
+	}
+
+	var setTarget = Database.GetTargetByNameOrURL(context.Background(), dbConnection, target)
+
+	fmt.Println(setTarget)
 }
 
 //var targetStats Database.GetTargetStatsParams = Database.GetTargetStatsParams{

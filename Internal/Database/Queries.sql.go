@@ -64,7 +64,7 @@ LIMIT $3
 `
 
 type GetTargetStatsByURLorNameParams struct {
-	Name  pgtype.Text
+	Name  string
 	Url   string
 	Limit int32
 }
