@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	_ "net/http"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -25,33 +26,34 @@ func main() {
 		slog.Info("Database connection closed.")
 	}(dbConnection, context.Background())
 
-	//var target Database.CreateTargetParams = Database.CreateTargetParams{
-	//	Url:             "https://www.youtube.com/",
-	//	Name:            "YouTube",
-	//	Environment:     config.AppEnv,
-	//	IntervalSeconds: 30,
-	//	TimeoutSeconds:  5,
-	//}
-	//err := Database.InsertTarget(context.Background(), dbConnection, target)
-	//if err != nil {
-	//	return
-	//}
-
 	var activeTargets = Database.GetActiveTargets(context.Background(), dbConnection)
 	for index, activeTarget := range activeTargets {
 		fmt.Println(index, ". ", activeTarget)
 	}
 
-	var target Database.GetTargetStatsByURLorNameParams = Database.GetTargetStatsByURLorNameParams{
-		Name:  ("YouTube"),
-		Url:   ("https://www.youtube.com/"),
-		Limit: int32(0),
+	var target Database.GetTargetByURLorNameParams = Database.GetTargetByURLorNameParams{
+		Name: pgtype.Text{
+			String: "Youtube",
+			Valid:  true,
+		},
 	}
 
-	var setTarget = Database.GetTargetByNameOrURL(context.Background(), dbConnection, target)
+	var targetByNameOrURL = Database.GetTargetByNameOrURL(context.Background(), dbConnection, target)
 
-	fmt.Println(setTarget)
+	fmt.Println(targetByNameOrURL)
 }
+
+//var target Database.CreateTargetParams = Database.CreateTargetParams{
+//	Url:             "https://www.youtube.com/",
+//	Name:            "YouTube",
+//	Environment:     config.AppEnv,
+//	IntervalSeconds: 30,
+//	TimeoutSeconds:  5,
+//}
+//err := Database.InsertTarget(context.Background(), dbConnection, target)
+//if err != nil {
+//	return
+//}
 
 //var targetStats Database.GetTargetStatsParams = Database.GetTargetStatsParams{
 //	TargetID: pgtype.UUID(parseUUID("f1df4ff8 - f189 - 4173 - ae22 - d353e6d70885")),

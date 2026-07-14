@@ -25,3 +25,11 @@ FROM uptime_logs l
 WHERE t.name ILIKE $1 OR t.url ILIKE $2
 ORDER BY l.checked_at DESC
 LIMIT $3;
+
+-- name: GetTargetByURLorName :one
+SELECT
+    t.name as target_name,
+    t.url as target_url
+FROM targets t
+WHERE t.name ILIKE $1 OR t.url ILIKE $2
+LIMIT 1;

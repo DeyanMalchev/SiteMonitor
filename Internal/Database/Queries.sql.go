@@ -19,7 +19,7 @@ RETURNING id, url, name, environment, interval_seconds, timeout_seconds, is_acti
 
 type CreateTargetParams struct {
 	Url             string
-	Name            string
+	Name            pgtype.Text
 	Environment     string
 	IntervalSeconds int32
 	TimeoutSeconds  int32
@@ -48,6 +48,32 @@ func (q *Queries) CreateTarget(ctx context.Context, arg CreateTargetParams) (Tar
 	return i, err
 }
 
+const getTargetByURLorName = `-- name: GetTargetByURLorName :one
+SELECT
+    t.name as target_name,
+    t.url as target_url
+FROM targets t
+WHERE t.name ILIKE $1 OR t.url ILIKE $2
+LIMIT 1
+`
+
+type GetTargetByURLorNameParams struct {
+	Name pgtype.Text
+	Url  string
+}
+
+type GetTargetByURLorNameRow struct {
+	TargetName pgtype.Text
+	TargetUrl  string
+}
+
+func (q *Queries) GetTargetByURLorName(ctx context.Context, arg GetTargetByURLorNameParams) (GetTargetByURLorNameRow, error) {
+	row := q.db.QueryRow(ctx, getTargetByURLorName, arg.Name, arg.Url)
+	var i GetTargetByURLorNameRow
+	err := row.Scan(&i.TargetName, &i.TargetUrl)
+	return i, err
+}
+
 const getTargetStatsByURLorName = `-- name: GetTargetStatsByURLorName :many
 SELECT
     t.name as target_name,
@@ -64,7 +90,7 @@ LIMIT $3
 `
 
 type GetTargetStatsByURLorNameParams struct {
-	Name  string
+	Name  pgtype.Text
 	Url   string
 	Limit int32
 }

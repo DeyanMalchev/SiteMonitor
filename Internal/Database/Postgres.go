@@ -60,14 +60,14 @@ func GetActiveTargets(ctx context.Context, pool *pgxpool.Pool) []Target {
 	return activeTargets
 }
 
-func GetTargetByNameOrURL(ctx context.Context, pool *pgxpool.Pool, targetParams GetTargetStatsByURLorNameParams) []GetTargetStatsByURLorNameRow {
+func GetTargetByNameOrURL(ctx context.Context, pool *pgxpool.Pool, targetParams GetTargetByURLorNameParams) GetTargetByURLorNameRow {
 
 	queries := New(pool)
 	if queries == nil {
 		slog.Error("No target queries available.", "error", nil)
 	}
 
-	target, _ := queries.GetTargetStatsByURLorName(ctx, targetParams)
+	target, _ := queries.GetTargetByURLorName(ctx, targetParams)
 
 	return target
 }
